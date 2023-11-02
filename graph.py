@@ -2,6 +2,7 @@
 from game_logic import GameState
 import random
 
+
 class Node:
     def __init__(self, state, parent=None):
         self.state = state
@@ -10,6 +11,7 @@ class Node:
 
     def add_child(self, child_node):
         self.children.append(child_node)
+
 
 class Graph:
     def __init__(self, depth=3):
@@ -25,4 +27,17 @@ class Graph:
         for move in current_node.state.possible_moves():
             child_node = Node(move, current_node)
             current_node.add_child(child_node)
-            self.generate_tree(child_node, depth-1)
+            self.generate_tree(child_node, depth - 1)
+
+    def get_terminal_nodes(self):
+        # Helper method to get all terminal nodes from the graph
+        terminals = []
+
+        def traverse(node):
+            if node.state.is_terminal:
+                terminals.append(node)
+            for child in node.children:
+                traverse(child)
+
+        traverse(self.root)
+        return terminals

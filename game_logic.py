@@ -1,14 +1,13 @@
 # game_logic.py
+import random
 
 class GameState:
-    def __init__(self, value=0):
-        self.value = value  # -1, 0, or 1
-        self.is_terminal = False
-
-    def evaluate(self):
-        return self.value
+    def __init__(self, value=None):
+        self.value = value  # -1, 0, or 1 only for terminal nodes
+        self.is_terminal = value is not None
 
     def possible_moves(self):
         if not self.is_terminal:
-            return [GameState() for _ in range(3)]
+            # Each non-terminal node has 2-3 child nodes.
+            return [GameState() for _ in range(random.randint(2, 3))]
         return []
