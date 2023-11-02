@@ -1,6 +1,7 @@
 # solvers/dfs_solver.py
 from solvers.solver import Solver
 
+
 class DFSSolver(Solver):
     def __init__(self, root):
         super().__init__(root)
@@ -18,10 +19,17 @@ class DFSSolver(Solver):
                     self.stack.append(child)
 
     def best_path(self):
-        # For DFS, return the path to the deepest node
-        path = []
-        node = self.visited_sequence[-1]
-        while node:
-            path.append(node)
-            node = node.parent
-        return path[::-1]
+        def dfs_max_score(node):
+            if not node.children:
+                return node.state.value, [node]
+            max_score = float('-inf')
+            best_child_path = []
+            for child in node.children:
+                score, path = dfs_max_score(child)
+                if score > max_score:
+                    max_score = score
+                    best_child_path = path
+            return max_score, [node] + best_child_path
+
+        _, path = dfs_max_score(self.root)
+        return path
