@@ -7,3 +7,6 @@ class Solver:
 
     def solve(self):
         raise NotImplementedError("Subclasses should implement this method.")
+
+    def best_path(self):
+        raise NotImplementedError("Subclasses should implement this method.")

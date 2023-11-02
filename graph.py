@@ -1,43 +1,26 @@
 # graph.py
 from game_logic import GameState
 import random
+from anytree import NodeMixin
 
-
-class Node:
+class TreeNode(NodeMixin):
     def __init__(self, state, parent=None):
+        super(TreeNode, self).__init__()
         self.state = state
-        self.children = []
         self.parent = parent
-
-    def add_child(self, child_node):
-        self.children.append(child_node)
-
+        self.name = str(state.value) if state.value else str(id(self))
 
 class Graph:
     def __init__(self, depth=3):
         root_state = GameState()
-        self.root = Node(root_state)
+        self.root = TreeNode(root_state)
         self.generate_tree(self.root, depth)
 
     def generate_tree(self, current_node, depth):
         if depth == 0:
             current_node.state.is_terminal = True
-            current_node.state.value = random.choice([-1, 0, 1])
+            current_node.state.value = random.randint(0,99)
             return
         for move in current_node.state.possible_moves():
-            child_node = Node(move, current_node)
-            current_node.add_child(child_node)
+            child_node = TreeNode(move, current_node)
             self.generate_tree(child_node, depth - 1)
-
-    def get_terminal_nodes(self):
-        # Helper method to get all terminal nodes from the graph
-        terminals = []
-
-        def traverse(node):
-            if node.state.is_terminal:
-                terminals.append(node)
-            for child in node.children:
-                traverse(child)
-
-        traverse(self.root)
-        return terminals

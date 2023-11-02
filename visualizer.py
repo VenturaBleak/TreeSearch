@@ -1,54 +1,100 @@
 # visualizer.py
+
 import tkinter as tk
+from tkinter import font
+from anytree import PreOrderIter
 import time
 
 class TreeVisualizer:
-    def __init__(self, root):
+
+    def __init__(self, root, solver):
         self.root = root
-        self.window = tk.Tk()
-        self.canvas = tk.Canvas(self.window, bg="white", height=600, width=800)
+        self.solver = solver
+        self.master = tk.Tk()
+        self.master.title('Tree Visualization')
+        self.canvas_width = 1400
+        self.canvas_height = 1000
+        self.canvas = tk.Canvas(self.master, width=self.canvas_width, height=self.canvas_height, bg='white')
         self.canvas.pack()
+        self.node_positions = {}
 
-    def draw_node(self, node, x, y, parent_coords=None, color="white"):
-        circle_radius = 20
-        self.canvas.create_oval(x - circle_radius, y - circle_radius,
-                                x + circle_radius, y + circle_radius,
-                                fill=color, outline="black")
-        self.canvas.create_text(x, y, text=str(node.state.value))
-        if parent_coords:
-            self.canvas.create_line(x, y - circle_radius, parent_coords[0], parent_coords[1] + circle_radius)
+        # Aesthetic settings
+        self.font = font.Font(size=10, weight='bold')
+        self.node_fill_color = '#D3D3D3'
+        self.node_visited_color = '#4CAF50'
+        self.path_color = '#FFD700'
+        self.edge_default_color = '#A9A9A9'
+        self.edge_visited_color = self.node_visited_color
+        self.edge_path_color = self.path_color
 
-    def draw_tree(self, node, x, y, x_offset=200, y_offset=100, parent_coords=None):
-        self.draw_node(node, x, y, parent_coords)
-        if node.children:
-            next_y = y + y_offset
-            start_x = x - x_offset * (len(node.children) - 1) / 2
-            for child in node.children:
-                self.draw_tree(child, start_x, next_y, x_offset / 2, y_offset, (x, y))
-                start_x += x_offset
+    def hierarchical_layout(self):
+        levels = {}
+        for node in PreOrderIter(self.root):
+            depth = node.depth
+            if depth in levels:
+                levels[depth].append(node)
+            else:
+                levels[depth] = [node]
 
-    def animate_solver(self, solver):
-        for node in solver.visited_sequence:
-            x, y = self.get_node_coords(node)
-            self.draw_node(node, x, y, color="lightgray")
-            self.canvas.update()
-            time.sleep(0.1)  # 100 ms delay
+        pos = {}
+        max_depth = max(levels.keys())
+        for depth, nodes in levels.items():
+            width_offset = self.canvas_width / (len(nodes) + 1)
+            for idx, node in enumerate(nodes, start=1):
+                pos[node] = (idx * width_offset, depth * (self.canvas_height / (max_depth + 2)) + 50)  # +50 to ensure the root node is visible
 
-    def highlight_best_path(self, path):
-        for node in path:
-            x, y = self.get_node_coords(node)
-            self.draw_node(node, x, y, color="lightblue")
-            self.canvas.update()
-            time.sleep(0.1)  # 100 ms delay
+        return pos
 
-    def get_node_coords(self, node):
-        # This function should be implemented to return the coordinates of the given node.
-        # For simplicity, here's a placeholder implementation, but in practice, you'd
-        # want to determine these coordinates based on the node's position in the tree.
-        return (400, 50)
+    def draw_node(self, x, y, color=None, text=None):
+        depth = len(self.node_positions) // 10 + 1
+        radius = 100 / depth
+        self.canvas.create_oval(x - radius, y - radius, x + radius, y + radius, fill=self.node_fill_color if not color else color, outline='')
+        if text:
+            self.canvas.create_text(x, y, text=text, font=self.font)
 
-    def run(self, solver):
-        self.draw_tree(self.root, 400, 50)
-        self.animate_solver(solver)
-        self.highlight_best_path(solver.best_path())
-        self.window.mainloop()
+    def draw_edge(self, x1, y1, x2, y2, color=None):
+        self.canvas.create_line(x1, y1, x2, y2, fill=self.edge_default_color if not color else color, width=1.5)
+
+    def animate_solver_process(self):
+        self.node_positions = self.hierarchical_layout()
+
+        # Draw all edges first
+        for node in PreOrderIter(self.root):
+            if node.parent:
+                px, py = self.node_positions[node.parent]
+                x, y = self.node_positions[node]
+                self.draw_edge(px, py, x, y)
+
+        # Draw all nodes
+        for node in PreOrderIter(self.root):
+            x, y = self.node_positions[node]
+            self.draw_node(x, y, text=str(node.state.value))
+
+        # Animate the solving process
+        for node in self.solver.visited_sequence:
+            x, y = self.node_positions[node]
+            if node.parent:
+                px, py = self.node_positions[node.parent]
+                self.draw_edge(px, py, x, y, color=self.edge_visited_color)
+            self.draw_node(x, y, color=self.node_visited_color, text=str(node.state.value))  # Re-draw the node to keep it in the foreground
+            self.master.update()
+            time.sleep(0.05)
+
+    def highlight_best_path(self):
+        best_path_nodes = self.solver.best_path()
+        for i, node in enumerate(best_path_nodes):
+            x, y = self.node_positions[node]
+            if i < len(best_path_nodes) - 1:  # not the last node
+                next_node = best_path_nodes[i+1]
+                nx, ny = self.node_positions[next_node]
+                self.draw_edge(x, y, nx, ny, color=self.edge_path_color)
+            self.draw_node(x, y, color=self.path_color, text=str(node.state.value))  # Re-draw the node to keep it in the foreground
+            self.master.update()
+            time.sleep(0.2)
+
+        time.sleep(2)  # Let user see the final result for a bit
+        self.master.destroy()  # Close the canvas
+
+    def visualize(self):
+        self.animate_solver_process()
+        self.highlight_best_path()
