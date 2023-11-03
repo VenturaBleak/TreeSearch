@@ -1,13 +1,13 @@
 # game_main.py
 from tkinter import Tk
 from game_ui import GameUI
-from game_state import GameState
+from game_logic import Game
 
 def main():
     root = Tk()
-    game_state = GameState()
-    game_ui = GameUI(root, game_state, visual=True)
-    game_ui.run()
+    game = Game()
+    game_app = GameUI(root, game)  # Pass the game instance directly
+    game_app.run()
 
 if __name__ == "__main__":
     main()
