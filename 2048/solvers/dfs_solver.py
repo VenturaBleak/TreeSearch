@@ -1,39 +1,40 @@
-# solvers/dfs_solver.py
+# dfs_solver.py
+from solvers.solver import Solver
+from game_logic import Game
+import numpy as np
+
 
 class DFSSolver(Solver):
+    def __init__(self, game, max_depth=50):
+        self.game = game
+        self.max_depth = max_depth
+
     def solve(self):
-        root = Node(copy.deepcopy(self.env))  # We make a deep copy of the environment for the root node
-        self.tree.add_node(root)
-        return self.dfs(root)
+        _, best_move = self.search(self.game, depth=0)
+        return best_move
 
-    def dfs(self, node):
-        # Check if the current state is a goal state
-        is_goal = self.is_goal(node.state)
-        if is_goal:
-            return self.reconstruct_path(node)
+    def search(self, game, depth):
+        if depth >= self.max_depth or game.is_game_over():
+            return self.evaluate_heuristic(game), None
 
-        legal_moves = node.state.get_legal_moves()
-        for action in legal_moves:
-            # Perform the action and get the new state
-            new_state = copy.deepcopy(node.state)
-            new_state.step(action)
-            child_node = Node(new_state, parent=node, action=action, depth=node.depth+1)
-            self.tree.add_node(child_node)
-            self.tree.add_edge(node, child_node)
+        best_heuristic_value = -float('inf')
+        best_move = None
 
-            result = self.dfs(child_node)
-            if result:
-                return result
-        return None
+        for move in game.get_legal_moves():
+            new_game = Game(size=game.size, win_tile=game.win_tile)
+            new_game.grid = np.copy(game.grid)
+            new_game.score = game.score
 
-    def is_goal(self, state):
-        # Define goal condition
-        return state.is_goal()
+            new_game.play(move)
 
-    def reconstruct_path(self, node):
-        # Reconstruct the path from node to root
-        path = []
-        while node.parent is not None:
-            path.append(node.action)
-            node = node.parent
-        return path[::-1]  # Return reversed path
+            heuristic_value, _ = self.search(new_game, depth + 1)
+            if heuristic_value > best_heuristic_value:
+                best_heuristic_value = heuristic_value
+                best_move = move
+
+        return best_heuristic_value, best_move
+
+    def evaluate_heuristic(self, game):
+        # Implement your heuristic here. As a simple example, counting the empty tiles:
+        empty_tiles = np.count_nonzero(game.grid == 0)
+        return empty_tiles

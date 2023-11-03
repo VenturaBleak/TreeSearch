@@ -2,6 +2,7 @@
 import gymnasium as gym
 from gymnasium import spaces
 from tkinter import Tk
+import pickle
 
 # import custom modules
 from game_logic import Game
