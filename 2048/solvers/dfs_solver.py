@@ -1,27 +1,39 @@
-from solvers.solver import Solver
-from copy import deepcopy
+# solvers/dfs_solver.py
 
-
-class DFSLimitedSolver(Solver):
-    def __init__(self, game, depth_limit=10):
-        super().__init__(game)
-        self.depth_limit = depth_limit
-
+class DFSSolver(Solver):
     def solve(self):
-        stack = [(deepcopy(self.game), [], 0)]  # state, path, depth
+        root = Node(copy.deepcopy(self.env))  # We make a deep copy of the environment for the root node
+        self.tree.add_node(root)
+        return self.dfs(root)
 
-        while stack:
-            current_state, path, depth = stack.pop()
-            if self.is_solution(current_state):
-                yield path
-                break  # Stop after finding the first solution
+    def dfs(self, node):
+        # Check if the current state is a goal state
+        is_goal = self.is_goal(node.state)
+        if is_goal:
+            return self.reconstruct_path(node)
 
-            if depth < self.depth_limit:
-                for next_state, move in self.get_next_states(current_state):
-                    stack.append((next_state, path + [move], depth + 1))
+        legal_moves = node.state.get_legal_moves()
+        for action in legal_moves:
+            # Perform the action and get the new state
+            new_state = copy.deepcopy(node.state)
+            new_state.step(action)
+            child_node = Node(new_state, parent=node, action=action, depth=node.depth+1)
+            self.tree.add_node(child_node)
+            self.tree.add_edge(node, child_node)
 
-            yield path, current_state  # For visualization purposes
+            result = self.dfs(child_node)
+            if result:
+                return result
+        return None
 
-    def is_solution(self, state):
-        # Override if necessary, for example to check for specific score
-        return super().is_solution(state)
+    def is_goal(self, state):
+        # Define goal condition
+        return state.is_goal()
+
+    def reconstruct_path(self, node):
+        # Reconstruct the path from node to root
+        path = []
+        while node.parent is not None:
+            path.append(node.action)
+            node = node.parent
+        return path[::-1]  # Return reversed path

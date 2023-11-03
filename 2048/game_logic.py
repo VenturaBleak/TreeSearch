@@ -16,11 +16,13 @@ class Game:
         return self.place_random(grid, 2)  # Place two '2's in the grid to start
 
     def place_random(self, grid, count):
+        # random value = 2 with probability 0.9, 4 with probability 0.1
+        random_value = 2 if random.random() < 0.9 else 4
         empty_cells = np.argwhere(grid == 0)
         indices = np.random.choice(len(empty_cells), size=min(count, len(empty_cells)), replace=False)
         for index in indices:
             y, x = empty_cells[index]
-            grid[y, x] = 2
+            grid[y, x] = random_value
         return grid
 
     def compress(self, grid):
