@@ -62,6 +62,7 @@ class GameUI(Frame):
                         fg=c.CELL_COLOR_DICT.get(new_number, getattr(c, 'CELL_TEXT_COLOR', "#000000"))
                     )
         self.update_idletasks()
+
     def key_down(self, event):
         key = repr(event.char)
         if key in self.commands:
@@ -69,13 +70,25 @@ class GameUI(Frame):
 
     def random_move(self):
         if not self.game.terminated:
-            move = random.choice(list(self.commands.values()))
-            self.make_move(move)
-            # Set the delay for the next move to 100ms (0.1 seconds)
-            self.after(100, self.random_move)
-        else:
-            message = 'You win!' if self.game.win_tile in self.game.grid else 'You lose!'
-            print(f"Game Over: {message} Score: {self.game.score}")
+            move = self.game.make_random_move()  # Use the game logic to make a random move
+            if move is not None:
+                print(f"Making random move: {move}")
+                self.make_move(move)
+                self.after(100, self.random_move)
+            else:
+                self.terminated_message()
+
+    def terminated_message(self):
+        message = 'You win!' if self.game.win_tile in self.game.grid else 'You lose!'
+        print(f"Game Over: {message} Score: {self.game.score}")
+        self.after(2000, self.master.destroy)  # Close the window after 2 seconds
+
+    def make_move(self, direction):
+        truncated, terminated = self.game.play(direction)
+        self.update_grid_cells()
+        if terminated and not hasattr(self, 'game_over_printed'):
+            self.terminated_message()
+            self.game_over_printed = True  # Set flag to avoid duplicate prints
 
     def run(self):
         if self.visual:
@@ -83,13 +96,6 @@ class GameUI(Frame):
             # Start the automatic random moves after the mainloop starts
             self.after(100, self.random_move)
             self.mainloop()
-
-    def make_move(self, direction):
-        truncated, terminated = self.game.play(direction)
-        self.update_grid_cells()
-        if terminated:
-            message = 'You win!' if self.game.win_tile in self.game.grid else 'You lose!'
-            print(f"Game Over: {message} Score: {self.game.score}")
 
 # When initializing the game UI, simply pass the game instance
 root = Tk()

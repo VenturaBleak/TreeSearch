@@ -1,5 +1,6 @@
+# game_logic.py
 import numpy as np
-
+import random
 class Game:
     def __init__(self, size=4, win_tile=2048):
         self.size = size
@@ -96,6 +97,26 @@ class Game:
             if not self.truncated:
                 self.check_no_moves()
         return self.truncated, self.terminated
+
+    # Add this function to Game class to determine legal moves
+    def get_legal_moves(self):
+        legal_moves = []
+        for direction in ['up', 'down', 'left', 'right']:
+            grid_copy = self.grid.copy()
+            self.move(direction)
+            if not np.array_equal(grid_copy, self.grid):
+                legal_moves.append(direction)
+            self.grid = grid_copy  # Reset grid to original
+        return legal_moves
+
+    # Add this function to Game class to make a random legal move
+    def make_random_move(self):
+        legal_moves = self.get_legal_moves()
+        if legal_moves:  # Check if there are any legal moves left
+            move = random.choice(legal_moves)
+            self.play(move)
+            return move
+        return None
 
 # Example of usage:
 game = Game()
