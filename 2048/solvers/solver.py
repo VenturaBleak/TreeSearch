@@ -10,5 +10,13 @@ class Solver:
         raise NotImplementedError("This method should be overridden by subclasses")
 
     def evaluate_heuristic(self, state):
-        # Count the number of empty tiles (assuming empty tiles are represented by 0)
-        return np.count_nonzero(state == 0)
+        raise NotImplementedError("This method should be overridden by subclasses")
+
+def clone_game(self, game):
+    # Deep copy the game state
+    new_game = Game(size=game.size, win_tile=game.win_tile)
+    new_game.grid = np.copy(game.grid)
+    new_game.score = game.score
+    new_game.is_win = game.is_win
+    new_game.game_over = game.game_over
+    return new_game

@@ -67,3 +67,8 @@ class GameUI(Frame):
         self.update_grid_cells()
         # Do not call mainloop here as it is a blocking call.
 
+    def play_random_move_and_update(self):
+        move_made = self.game.make_random_move()
+        self.update_grid_cells()
+        return move_made
+

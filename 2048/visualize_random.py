@@ -1,31 +1,32 @@
-# visualize.py
+# game_visualize.py
 import time
+from tkinter import Tk
+from game_logic import Game
+from game_ui import GameUI
 import random
-import gymnasium as gym
 
-# if name == 'main':
-if __name__ == '__main__':
-    # Register the environment
-    gym.register(
-        id='TwoThousandFortyEight-v0',
-        entry_point='game_environment:TwoThousandFortyEightEnv',
-        kwargs={'human_renderer': True}  # Set to True to enable human rendering
-    )
+def main():
+    root = Tk()
+    game = Game()
+    game_ui = GameUI(root, game, visual=True)
+    game_ui.init_ui()
+    game_over = False
+    is_won = False
 
-    # To play with the GUI
-    env = gym.make('TwoThousandFortyEight-v0')
-    obs, reward, terminated, truncated, info = env.reset()
-    print(f"obs: {obs}, reward: {reward}, terminated: {terminated}, truncated: {truncated}, info: {info}")
-    while not terminated and not truncated:
-        # Get legal moves which will now be numeric
-        legal_moves = env.game.get_legal_moves()
-        print(f"legal moves: {legal_moves}")
-        action = random.choice(legal_moves)
-        print(f"action: {action}")
-        obs, reward, terminated, truncated, info = env.step(action)
-        print(f"obs: {obs}, reward: {reward}, terminated: {terminated}, truncated: {truncated}, info: {info}")
-        env.render()  # Render the GUI based on the instantiation parameter
-        time.sleep(0.05)
-    # When the game is terminated or truncated, wait for a specified delay and then close the GUI
-    time.sleep(5)
-    env.close()
+    while not game_over and not is_won:
+        legal_moves = game.get_legal_moves()
+        print(f"Legal moves: {legal_moves}")
+        if legal_moves:  # Check if there are any legal moves left
+            action = random.choice(legal_moves)
+            grid, score, game_over, is_won = game.play(action)
+            game_ui.update_grid_cells()  # Update UI after move
+            time.sleep(0.1)
+        else:
+            print("No moves left, game over")
+            break
+
+    print("Game Over!" if game_over else "You Win!")
+    root.mainloop()
+
+if __name__ == "__main__":
+    main()
