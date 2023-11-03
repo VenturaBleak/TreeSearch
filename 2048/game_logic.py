@@ -9,6 +9,7 @@ class Game:
         self.grid = np.zeros((size, size), dtype=int)
         self.score = 0
         self.game_over = False
+        self.is_win = False
         self.direction_map = {0: 'up', 1: 'down', 2: 'left', 3: 'right'}
 
     def new_game(self, size):
@@ -103,9 +104,9 @@ class Game:
             change_made = self.move(direction_num)
             if not change_made:
                 return self.grid, self.score, self.game_over
-            self.check_win()
+            self.is_win = self.check_win()
             self.check_no_moves()
-        return self.grid, self.score, self.game_over
+        return self.grid, self.score, self.game_over, self.is_win
 
     def get_max_tile(self):
         return np.max(self.grid)
@@ -131,10 +132,10 @@ class Game:
 # Example of usage:
 game = Game()
 print(game.grid)
-_, _, game_over = game.play(1)  # Make a move (down)
+_, _, game_over, _ = game.play(1)  # Make a move (down)
 print(game.grid)
-_, _, game_over = game.play(1)  # Make a move (down)
+_, _, game_over, _ = game.play(1)  # Make a move (down)
 print(game.grid)
-_, _, game_over = game.play(1)  # Make a move (down)
+_, _, game_over, _ = game.play(1)  # Make a move (down)
 print(game.grid)
 print(game_over)

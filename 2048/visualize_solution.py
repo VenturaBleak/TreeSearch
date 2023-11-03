@@ -1,32 +1,29 @@
 # visualize_solution.py
 import time
-import gymnasium as gym
+from tkinter import Tk
+from game_logic import Game
+from game_ui import GameUI
 from solvers.dfs_solver import DFSSolver
 
-if __name__ == '__main__':
-    # Register the environment
-    gym.register(
-        id='TwoThousandFortyEight-v0',
-        entry_point='game_environment:TwoThousandFortyEightEnv',
-        kwargs={'human_renderer': True}  # Set to True to enable human rendering
-    )
+def main():
+    root = Tk()
+    game = Game()
+    game_ui = GameUI(root, game, visual=True)
+    game_ui.init_ui()
+    solver = DFSSolver(game)
 
-    # To play with the GUI
-    env = gym.make('TwoThousandFortyEight-v0')
-    solver = DFSSolver(env)
-
-    obs, _, terminated, truncated, info = env.reset()
-
-    while not terminated and not truncated:
-        action = solver.solve(obs)
-        obs, reward, terminated, truncated, info = env.step(action)
-        if info.get('solved', False):
-            print("Goal state reached!")
+    while not game.game_over and not game.is_win:
+        best_move = solver.solve()
+        if best_move is not None:
+            game.play(best_move)
+            game_ui.update_grid_cells()
+            time.sleep(0)  # You can adjust the sleep time as needed
+        else:
+            print("No moves left, game over")
             break
-        env.render()
-        time.sleep(0.05)
 
-    print("Solution has been executed.")
+    print("Game Over!" if game.game_over else "You Win!")
+    root.mainloop()
 
-    time.sleep(5)
-    env.close()
+if __name__ == "__main__":
+    main()
