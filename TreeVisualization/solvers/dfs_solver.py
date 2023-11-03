@@ -1,7 +1,6 @@
 # solvers/dfs_solver.py
 from solvers.solver import Solver
 
-
 class DFSSolver(Solver):
     def __init__(self, root):
         super().__init__(root)
