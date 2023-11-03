@@ -1,14 +1,15 @@
 # game_logic.py
 import numpy as np
 import random
+
 class Game:
     def __init__(self, size=4, win_tile=2048):
-        self.size = size
         self.win_tile = win_tile
-        self.grid = self.new_game(size)
-        self.truncated = False
-        self.terminated = False
+        self.size = size
+        self.grid = np.zeros((size, size), dtype=int)
         self.score = 0
+        self.game_over = False
+        self.direction_map = {0: 'up', 1: 'down', 2: 'left', 3: 'right'}
 
     def new_game(self, size):
         grid = np.zeros((size, size), dtype=int)
@@ -24,108 +25,114 @@ class Game:
 
     def compress(self, grid):
         new_grid = np.zeros_like(grid)
-        done = False
+        changed = False
         for row in range(self.size):
             non_zero_elements = grid[row][grid[row] != 0]
             non_zero_elements = non_zero_elements[:self.size]
             new_grid[row, :len(non_zero_elements)] = non_zero_elements
             if len(non_zero_elements) < self.size:
-                done = True
-        return new_grid, done
+                changed = True
+        return new_grid, changed
 
     def merge(self, grid):
-        done = False
+        changed = False
         for row in range(self.size):
             for col in range(self.size - 1):
-                if grid[row, col] == grid[row, col + 1] != 0:
+                if grid[row, col] == grid[row, col + 1] and grid[row, col] != 0:
                     grid[row, col] *= 2
                     grid[row, col + 1] = 0
                     self.score += grid[row, col]
-                    done = True
-        return grid, done
+                    changed = True
+        return grid, changed
 
-    def move(self, direction):
+    def move(self, direction_num):
+        string_direction = self.direction_map.get(direction_num, None)
+
+        if string_direction is None:
+            raise ValueError("Invalid numeric direction. Must be 0, 1, 2, or 3.")
+
         original_grid = self.grid.copy()
-        if direction == 'up':
+        if direction_num == 0:  # Up
             self.grid = np.rot90(self.grid)
             compressed_grid, compressed = self.compress(self.grid)
             merged_grid, merged = self.merge(compressed_grid)
             self.grid = self.compress(merged_grid)[0]
             self.grid = np.rot90(self.grid, -1)
-        elif direction == 'down':
+        elif direction_num == 1:  # Down
             self.grid = np.rot90(self.grid, -1)
             compressed_grid, compressed = self.compress(self.grid)
             merged_grid, merged = self.merge(compressed_grid)
             self.grid = self.compress(merged_grid)[0]
             self.grid = np.rot90(self.grid)
-        elif direction == 'left':
+        elif direction_num == 2:  # Left
             compressed_grid, compressed = self.compress(self.grid)
             merged_grid, merged = self.merge(compressed_grid)
             self.grid = self.compress(merged_grid)[0]
-        elif direction == 'right':
+        elif direction_num == 3:  # Right
             self.grid = np.fliplr(self.grid)
             compressed_grid, compressed = self.compress(self.grid)
             merged_grid, merged = self.merge(compressed_grid)
             self.grid = self.compress(merged_grid)[0]
             self.grid = np.fliplr(self.grid)
 
+        change_made = compressed or merged
         if compressed or merged:
             self.grid = self.place_random(self.grid, 1)
 
-        if not np.array_equal(self.grid, original_grid):
-            self.truncated = True
-        else:
-            self.truncated = False
+        return change_made  # Return whether a change has been made to the grid
 
     def check_win(self):
-        self.terminated = np.any(self.grid == self.win_tile)
+        # Win condition should not set the game as over; it should only check for win
+        return np.any(self.grid == self.win_tile)
 
     def check_no_moves(self):
-        temp_grid = np.copy(self.grid)
-        can_merge = any(
-            np.array_equal(self.compress(self.grid)[0], temp_grid) == False
-            or np.array_equal(self.merge(self.grid)[0], temp_grid) == False
-            for _ in range(4)
-        )
-        self.grid = temp_grid
-        self.terminated = not can_merge
+        can_move = False  # Assume no moves are possible unless proven otherwise
+        for direction_num in range(4):
+            temp_grid = np.copy(self.grid)
+            if self.move(direction_num):  # Attempt to make a move
+                can_move = True
+            self.grid = temp_grid  # Reset grid to original after checking
+            if can_move:  # If a move is possible, break early
+                break
+        self.game_over = not can_move
 
-    def play(self, direction):
-        if not self.terminated:
-            self.move(direction)
+    def play(self, direction_num):
+        if not self.game_over:
+            change_made = self.move(direction_num)
+            if not change_made:
+                return self.grid, self.score, self.game_over
             self.check_win()
-            if not self.truncated:
-                self.check_no_moves()
-        return self.truncated, self.terminated
+            self.check_no_moves()
+        return self.grid, self.score, self.game_over
 
-    # Add this function to Game class to determine legal moves
+    def get_max_tile(self):
+        return np.max(self.grid)
+
     def get_legal_moves(self):
         legal_moves = []
-        for direction in ['up', 'down', 'left', 'right']:
+        for direction_num in self.direction_map:
             grid_copy = self.grid.copy()
-            self.move(direction)
+            self.move(direction_num)
             if not np.array_equal(grid_copy, self.grid):
-                legal_moves.append(direction)
+                legal_moves.append(direction_num)
             self.grid = grid_copy  # Reset grid to original
         return legal_moves
 
-    # Add this function to Game class to make a random legal move
     def make_random_move(self):
         legal_moves = self.get_legal_moves()
-        if legal_moves:  # Check if there are any legal moves left
-            move = random.choice(legal_moves)
-            self.play(move)
-            return move
+        if legal_moves:
+            move_num = random.choice(legal_moves)
+            self.play(move_num)
+            return move_num
         return None
 
 # Example of usage:
 game = Game()
 print(game.grid)
-truncated, terminated = game.play('down')  # Make a move
+_, _, game_over = game.play(1)  # Make a move (down)
 print(game.grid)
-truncated, terminated = game.play('down')  # Make a move
+_, _, game_over = game.play(1)  # Make a move (down)
 print(game.grid)
-truncated, terminated = game.play('down')  # Make a move
+_, _, game_over = game.play(1)  # Make a move (down)
 print(game.grid)
-print("Truncated:", truncated)
-print("Terminated:", terminated)
+print(game_over)
