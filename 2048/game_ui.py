@@ -1,25 +1,14 @@
 # game_ui.py
 from tkinter import Frame, Label, CENTER, Tk
 import game_constants as c
-import random
-
-from game_logic import Game
 
 class GameUI(Frame):
     def __init__(self, master, game, visual=True):
         Frame.__init__(self, master)
         self.grid()
         self.master.title('2048')
-        self.master.bind("<Key>", self.key_down)
         self.game = game
         self.visual = visual
-
-        self.commands = {
-            c.KEY_UP: 'up',
-            c.KEY_DOWN: 'down',
-            c.KEY_LEFT: 'left',
-            c.KEY_RIGHT: 'right'
-        }
 
         self.grid_cells = []
         if self.visual:
@@ -27,9 +16,12 @@ class GameUI(Frame):
             self.update_grid_cells()
 
     def init_grid(self):
+        print(f"Initializing grid with game size: {self.game.size}")
+        print(f"Game grid shape (should be {self.game.size}x{self.game.size}): {self.game.grid.shape}")
         background = Frame(self, bg=c.BACKGROUND_COLOR_GAME, width=c.SIZE, height=c.SIZE)
         background.grid()
 
+        # Use self.game.size to determine the grid size
         for i in range(self.game.size):
             grid_row = []
             for j in range(self.game.size):
@@ -46,53 +38,32 @@ class GameUI(Frame):
                 grid_row.append(t)
             self.grid_cells.append(grid_row)
 
+        print(f"grid_cells row count (should be {self.game.size}): {len(self.grid_cells)}")
+        print(
+            f"grid_cells column count per row (should all be {self.game.size}): {[len(row) for row in self.grid_cells]}")
+
     def update_grid_cells(self):
         if not self.visual:
             return
-        for i in range(self.game.size):
+
+        for i in range(self.game.size):  # Assuming game.size is the length of one dimension of the square grid
             for j in range(self.game.size):
-                new_number = self.game.grid[i][j]
+                new_number = self.game.grid[i, j]  # Accessing NumPy array element
+
+                # The rest of the logic remains the same
                 if new_number == 0:
                     self.grid_cells[i][j].configure(text="", bg=c.BACKGROUND_COLOR_CELL_EMPTY)
                 else:
                     self.grid_cells[i][j].configure(
                         text=str(new_number),
                         bg=c.BACKGROUND_COLOR_DICT.get(new_number, c.BACKGROUND_COLOR_CELL_EMPTY),
-                        # Provide a default color if CELL_TEXT_COLOR is not defined
                         fg=c.CELL_COLOR_DICT.get(new_number, getattr(c, 'CELL_TEXT_COLOR', "#000000"))
                     )
         self.update_idletasks()
-    def key_down(self, event):
-        key = repr(event.char)
-        if key in self.commands:
-            self.make_move(self.commands[key])
 
-    def random_move(self):
-        if not self.game.terminated:
-            move = random.choice(list(self.commands.values()))
-            self.make_move(move)
-            # Set the delay for the next move to 100ms (0.1 seconds)
-            self.after(100, self.random_move)
-        else:
-            message = 'You win!' if self.game.win_tile in self.game.grid else 'You lose!'
-            print(f"Game Over: {message} Score: {self.game.score}")
-
-    def run(self):
-        if self.visual:
-            self.update_grid_cells()  # Initial update to show the starting grid
-            # Start the automatic random moves after the mainloop starts
-            self.after(100, self.random_move)
-            self.mainloop()
-
-    def make_move(self, direction):
-        truncated, terminated = self.game.play(direction)
+    # Rename start to init_ui and remove the call to mainloop()
+    def init_ui(self):
+        self.init_grid()
         self.update_grid_cells()
-        if terminated:
-            message = 'You win!' if self.game.win_tile in self.game.grid else 'You lose!'
-            print(f"Game Over: {message} Score: {self.game.score}")
+        # Do not call mainloop here as it is a blocking call.
 
-# When initializing the game UI, simply pass the game instance
-root = Tk()
-game = Game()
-game_app = GameUI(root, game)  # Pass the game instance directly
-game_app.run()
