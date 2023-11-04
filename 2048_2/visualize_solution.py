@@ -1,10 +1,13 @@
-import pygame
+# visualize_solution.py
 from game_logic import Board
-from agents import RandomAgent, MCTSAgent
 from game_visualizer import Visualizer
 import cProfile, pstats, io
 from pstats import SortKey
 import time
+from copy import copy
+
+from agents import RandomAgent
+from agents2 import MCTSAgent
 
 
 def main():
@@ -12,14 +15,14 @@ def main():
     pr.enable()
     game_start_time = time.time()
     board = Board()
-    agent = MCTSAgent(time_limit=50, max_depth=10)
+    agent = MCTSAgent(time_limit=3000, max_depth=5)
     visualizer = Visualizer()
 
     running = True
     reached_2048 = False
     while running and not board.is_game_over():
 
-        move = agent.select_move(board)
+        move = agent.select_move(copy(board))
         board.move(move)
 
         # Check for reaching 2048 tile
@@ -29,18 +32,12 @@ def main():
 
         visualizer.update_display(board, agent.last_move_stats, reached_2048, time.time() - game_start_time)
 
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                running = False
-
-        pygame.time.wait(0)
-
     visualizer.close()
     game_end_time = time.time()
 
     pr.disable()
     s = io.StringIO()
-    sortby = SortKey.CUMULATIVE
+    sortby = SortKey.TIME
     ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
     ps.print_stats()
     print(s.getvalue())

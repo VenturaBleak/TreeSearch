@@ -28,7 +28,7 @@ class Board:
         return np.any(self.board == 2048)
 
     def rotate_board(self, action):
-        return np.rot90(self.board, -action)
+        return np.rot90(self.board, action)
 
     def stack(self, board):
         new_board = np.zeros_like(board)

@@ -45,19 +45,31 @@ MoveEvaluation = namedtuple('MoveEvaluation', 'move empty_tiles high_value_tiles
 
 class MCTSAgent:
     def __init__(self, time_limit: float, max_depth: int = np.inf):
-        self.time_limit = time_limit / 1000  # Convert milliseconds to seconds
-        self.temporary_time_limit = self.time_limit
+        self.base_time_limit = time_limit / 1000  # Convert milliseconds to seconds
+        self.temporary_time_limit = self.base_time_limit  # Initialize temporary time limit
         self.previous_max_empty_tiles = np.inf
         self.max_depth = max_depth
+        self.temporary_depth_limit = max_depth
         self.last_move_stats = {}
+
+    def adjust_temporary_time_limit(self):
+        """Adjust the temporary time limit based on the number of previous max empty tiles."""
+        if self.previous_max_empty_tiles >= 4:
+            self.temporary_time_limit = self.base_time_limit * 0.025
+            self.temporary_depth_limit = self.max_depth
+        else:
+            # Increase time limit by a more-than-linear function of empty tiles
+            # The following is an example, you can define this function as needed
+            empty_tiles_factor = max(1, 4 - self.previous_max_empty_tiles)  # Values from 1 to 6
+            self.temporary_time_limit = self.base_time_limit * (empty_tiles_factor ** 2.5) / 36
+            self.temporary_depth_limit = int(self.max_depth + (empty_tiles_factor) * 1.15)
+            print(f"Adjusted time limit: {self.temporary_time_limit:.2f} s | Adjusted depth limit: {self.temporary_depth_limit}")
 
     def select_move(self, game_state: Board):
         start_time = time.time()
+        self.adjust_temporary_time_limit()  # Adjust the time limit before starting
         moves = game_state.get_available_moves()
         rollouts_data = []
-
-
-        max = self.time_limit
 
         while time.time() - start_time < self.temporary_time_limit:
             move = random.choice(moves)
@@ -68,6 +80,11 @@ class MCTSAgent:
         best_move = self.evaluate(rollouts_data) if rollouts_data else None
         self.calculate_last_move_stats(rollouts_data, start_time)
 
+        # Update previous_max_empty_tiles for the next move
+        # based on number of empty tiles in the current move
+        # count np zeros in baord
+        self.previous_max_empty_tiles = np.count_nonzero(game_state.board == 0)
+
         return best_move
 
     def random_playout(self, game_state: Board, move):
@@ -76,7 +93,7 @@ class MCTSAgent:
         if np.array_equal(board_copy.board, game_state.board):
             return -np.inf, np.inf
 
-        for _ in range(self.max_depth):
+        for _ in range(self.temporary_depth_limit):
             if board_copy.is_game_over():
                 break
             random_move = random.choice(board_copy.get_available_moves())
