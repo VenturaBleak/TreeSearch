@@ -7,7 +7,7 @@ import time
 from copy import copy
 
 from agents import RandomAgent
-from agents2 import MCTSAgent
+from agents4 import MCTSAgent
 
 
 def main():
@@ -15,7 +15,7 @@ def main():
     pr.enable()
     game_start_time = time.time()
     board = Board()
-    agent = MCTSAgent(time_limit=3000, max_depth=5)
+    agent = MCTSAgent(time_limit=1500, max_depth=4)
     visualizer = Visualizer()
 
     running = True
