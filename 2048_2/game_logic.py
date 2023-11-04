@@ -15,17 +15,20 @@ class Board:
         self.size = size
         self.board = np.zeros((size, size), dtype=int)
         self.score = 0
-        self.add_tile()
+        self.highest_value = 0
         self.add_tile()
 
     def reset(self):
         self.board = np.zeros((self.size, self.size), dtype=int)
         self.score = 0
-        self.add_tile()
+        self.highest_value = 0
         self.add_tile()
 
+    def has_reached_2048(self):
+        return np.any(self.board == 2048)
+
     def rotate_board(self, action):
-        return np.rot90(self.board, -action)
+        return np.rot90(self.board, action)
 
     def stack(self, board):
         new_board = np.zeros_like(board)
@@ -41,9 +44,9 @@ class Board:
         for i in range(self.size):
             for j in range(self.size-1):
                 if board[i][j] == board[i][j+1] and board[i][j] != 0:
-                    board[i][j] *= 2
+                    merged_value = board[i][j] * 2
+                    board[i][j] = merged_value
                     board[i][j+1] = 0
-                    self.score += board[i][j]
         return board
 
     def move(self, action):
@@ -62,9 +65,15 @@ class Board:
         empty_cells = [(x, y) for x, y in zip(*np.where(self.board == 0))]
         if not empty_cells:  # Just in case there are no empty cells.
             return
-        index = np.random.choice(len(empty_cells))
+        index = choice(len(empty_cells))
         cell = empty_cells[index]
-        self.board[cell] = 4 if np.random.rand() < 0.1 else 2
+        new_value = 4 if np.random.rand() < 0.1 else 2
+        self.board[cell] = new_value
+
+
+        # update score and highest value
+        self.score = np.sum(self.board)
+        self.highest_value = np.max(self.board)
 
     def is_board_full(self):
         return not np.any(self.board == 0)
@@ -84,3 +93,16 @@ class Board:
 
     def __str__(self):
         return np.array_str(self.board)
+
+    def run(self):
+        while not self.is_game_over():
+            print(self)
+            print(f"Score: {self.score} | Highest Value: {self.highest_value}")
+            print("Available Moves: ", self.get_available_moves())
+            try:
+                action = int(input("Enter action: "))
+                self.move(action)
+            except ValueError:
+                print("Invalid action!")
+                continue
+            print()

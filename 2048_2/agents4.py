@@ -45,19 +45,31 @@ MoveEvaluation = namedtuple('MoveEvaluation', 'move empty_tiles high_value_tiles
 
 class MCTSAgent:
     def __init__(self, time_limit: float, max_depth: int = np.inf):
-        self.time_limit = time_limit / 1000  # Convert milliseconds to seconds
-        self.temporary_time_limit = self.time_limit
+        self.base_time_limit = time_limit / 1000  # Convert milliseconds to seconds
+        self.temporary_time_limit = self.base_time_limit  # Initialize temporary time limit
         self.previous_max_empty_tiles = np.inf
         self.max_depth = max_depth
+        self.temporary_depth_limit = max_depth
         self.last_move_stats = {}
+
+    def adjust_temporary_time_limit(self):
+        """Adjust the temporary time limit based on the number of previous max empty tiles."""
+        if self.previous_max_empty_tiles >= 4:
+            self.temporary_time_limit = self.base_time_limit * 0.05
+            self.temporary_depth_limit = self.max_depth
+        else:
+            # Increase time limit by a more-than-linear function of empty tiles
+            # The following is an example, you can define this function as needed
+            empty_tiles_factor = max(1, 5 - self.previous_max_empty_tiles)  # Values from 1 to 6
+            self.temporary_time_limit = self.base_time_limit * (empty_tiles_factor ** 2.5) / 36
+            self.temporary_depth_limit = int(self.max_depth + (empty_tiles_factor) * 1.8)
+            print(f"Adjusted time limit: {self.temporary_time_limit:.2f} s | Adjusted depth limit: {self.temporary_depth_limit}")
 
     def select_move(self, game_state: Board):
         start_time = time.time()
+        self.adjust_temporary_time_limit()  # Adjust the time limit before starting
         moves = game_state.get_available_moves()
         rollouts_data = []
-
-
-        max = self.time_limit
 
         while time.time() - start_time < self.temporary_time_limit:
             move = random.choice(moves)
@@ -68,6 +80,11 @@ class MCTSAgent:
         best_move = self.evaluate(rollouts_data) if rollouts_data else None
         self.calculate_last_move_stats(rollouts_data, start_time)
 
+        # Update previous_max_empty_tiles for the next move
+        # based on number of empty tiles in the current move
+        # count np zeros in baord
+        self.previous_max_empty_tiles = np.count_nonzero(game_state.board == 0)
+
         return best_move
 
     def random_playout(self, game_state: Board, move):
@@ -76,7 +93,7 @@ class MCTSAgent:
         if np.array_equal(board_copy.board, game_state.board):
             return -np.inf, np.inf
 
-        for _ in range(self.max_depth):
+        for _ in range(self.temporary_depth_limit):
             if board_copy.is_game_over():
                 break
             random_move = random.choice(board_copy.get_available_moves())
@@ -86,21 +103,44 @@ class MCTSAgent:
         high_value_tiles = np.count_nonzero(~np.isin(board_copy.board, [0, 2, 4]))
         return empty_tiles, high_value_tiles
 
+
     def evaluate(self, rollouts_data):
-        max_empty_tiles = max(rollouts_data, key=lambda x: x.empty_tiles).empty_tiles
-        candidates = [data for data in rollouts_data if data.empty_tiles == max_empty_tiles]
-        best_move_data = min(candidates, key=lambda x: x.high_value_tiles)
-        return best_move_data.move
+        """
+        Evaluate moves based on the average number of empty tiles each move produces.
+        Choose the move with the highest average of empty tiles.
+        """
+        # Calculate the average number of empty tiles per move
+        move_averages = {}
+        for move in set(data.move for data in rollouts_data):
+            move_data = [data.empty_tiles for data in rollouts_data if data.move == move]
+
+            if self.previous_max_empty_tiles >= 3:
+                percentile = 0.25
+            else:
+                percentile = 0.75
+
+            if move_data:
+                move_data.sort(reverse=True)
+                top_20_percent_index = max(1, int(len(move_data) * percentile))  # Ensure at least one element is considered
+                top_20_percent_data = move_data[:top_20_percent_index]
+                move_averages[move] = np.mean(top_20_percent_data)
+            else:
+                move_averages[move] = 0
+
+        # Select the move with the highest average of empty tiles
+        best_move = max(move_averages, key=move_averages.get)
+        return best_move
 
     def calculate_last_move_stats(self, rollouts_data, start_time):
         num_rollouts = len(rollouts_data)
         total_empty_tiles = sum(data.empty_tiles for data in rollouts_data)
         average_empty_tiles = total_empty_tiles / num_rollouts if num_rollouts else 0
-        max_empty_tiles = max(rollouts_data, key=lambda x: x.empty_tiles).empty_tiles if rollouts_data else 0
+        # This value is no longer needed for the decision-making process
+        # max_empty_tiles = max(rollouts_data, key=lambda x: x.empty_tiles).empty_tiles if rollouts_data else 0
 
         self.last_move_stats = {
             'time_taken': time.time() - start_time,
             'num_rollouts': num_rollouts,
             'average_empty_tiles': average_empty_tiles,
-            'max_empty_tiles': max_empty_tiles,
+            # 'max_empty_tiles': max_empty_tiles,  # This line can be commented out or removed
         }
